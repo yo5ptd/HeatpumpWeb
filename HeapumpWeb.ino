@@ -34,6 +34,7 @@ const char *ssid = STASSID;
 const char *password = STAPSK;
 
 byte temps[300];
+const byte offset=55;
 byte tempPointer=0;
 const unsigned long fiveMinutes = 5 * 60 * 1000UL;
 static unsigned long lastSampleTime = 0 - fiveMinutes;  // initialize such that a reading is due the first time through loop()
@@ -137,7 +138,7 @@ void loop(void) {
   if (millis() - lastSampleTime >= fiveMinutes)
   {
     lastSampleTime += fiveMinutes;
-    temps[++tempPointer]=roomTemp;
+    temps[++tempPointer]=roomTemp+offset;
     if (tempPointer>fiveMinutes*60*24) tempPointer=0;
   }
   server.handleClient();
@@ -146,15 +147,17 @@ void loop(void) {
 }
 
 void drawGraph() {
+
   String out = "";
   char temp[100];
-  out += "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"1500\" height=\"150\">\n";
+  out += "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"1450\" height=\"150\">\n";
   out += "<rect width=\"1500\" height=\"150\" fill=\"rgb(250, 230, 210)\" stroke-width=\"1\" stroke=\"rgb(0, 0, 0)\" />\n";
   out += "<g stroke=\"black\">\n";
-  int y = temps[0];
-  for (int x = 5; x < 1450; x += 5) {
-    int y2 = temp[x/5];
-    sprintf(temp, "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" />\n", x, 140 - y, x + 5, 140 - y2);
+  out += "<line x1=\"0\" y1=\"80\" x2=\"1455\" y2=\"80\" style=\"stroke:rgb(255,0,0);stroke-width:1\" />";
+  int y = temps[0]-offset;
+  for (int x = 5; x < 1445; x += 5) {
+    int y2 = temps[x/5-1]-offset;
+    sprintf(temp, "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" />\n", x, 80 - y*2, x + 5, 80 - y2*2);
     out += temp;
     y = y2;
   }
@@ -186,8 +189,8 @@ void process()
       switch (message[3]){
       case 0xC0:
         debugmess();
-        outTemp=(int)message[8]-55;
-        dischargeTemp=(int)message[10]-55;//bit 48..55
+        outTemp=(int)message[8]-offset;
+        dischargeTemp=(int)message[10]-offset;//bit 48..55
         break;
       case 0xC3:
         debugmess();
@@ -195,8 +198,8 @@ void process()
         break;
       case 0x20:
         debugmess();
-        inSetTemp=(int)(message[4])-55;//bit 1..7 (bit0 isFahrenHeit)
-        roomTemp=(int)message[5]-55; //bit 8..15
+        inSetTemp=(int)(message[4])-offset;//bit 1..7 (bit0 isFahrenHeit)
+        roomTemp=(int)message[5]-offset; //bit 8..15
         break;
       case 0xF3:
         debugmess();
