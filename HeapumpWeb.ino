@@ -12,11 +12,14 @@
 
 
 #ifndef STASSID
-#define STASSID "yourWifiRouter"
-#define STAPSK  "wifiPasswd"
-#endif
+#define STASSID "wifi ssid"
+#define STAPSK  "wifi pass"
+#endifwifi ssid
 
-byte message[56];         // a String to hold incoming data
+String apiKey = "thingspead api key";
+const char* tpserver = "api.thingspeak.com";
+
+byte messg[56];         // a String to hold incoming data
 bool buffComplete = false;  // whether the string is complete
 int buffpoint=0;
 
@@ -41,6 +44,7 @@ static unsigned long lastSampleTime = 0 - fiveMinutes;  // initialize such that 
 
 
 ESP8266WebServer server(80);
+WiFiClient client;
 
 const int led = 13;
 
@@ -136,14 +140,57 @@ void setup(void) {
 void loop(void) {
   serialEvent();
   if (millis() - lastSampleTime >= fiveMinutes)
-  {
+  {     
+    thingSpeak(); //send data every 5 minutes
     lastSampleTime += fiveMinutes;
     temps[++tempPointer]=roomTemp+offset;
-    if (tempPointer>fiveMinutes*60*24) tempPointer=0;
+    if (tempPointer>fiveMinutes*60*24) 
+    {
+      tempPointer=0;
+    }
   }
   server.handleClient();
   MDNS.update();
 
+}
+
+void thingSpeak()
+{
+  Serial.print("Sending data to Thingspeak:");
+  if (client.connect(tpserver,80)) {
+    String postStr = apiKey;
+    postStr +="&field1=";
+    postStr += String(outTemp);
+    postStr +="&field2=";
+    postStr += String(dischargeTemp);
+    postStr +="&field3=";
+    postStr += String(fanSpeed);
+    postStr +="&field4=";
+    postStr += String(inSetTemp);
+    postStr +="&field5=";
+    postStr += String(roomTemp);
+    postStr +="&field6=";
+    postStr += String(current);
+    postStr += "\r\n\r\n";
+     
+    client.print("POST /update HTTP/1.1\n");
+    client.print("Host: api.thingspeak.com\n");
+    client.print("Connection: close\n");
+    client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
+    client.print("Content-Type: application/x-www-form-urlencoded\n");
+    client.print("Content-Length: ");
+    client.print(postStr.length());
+    client.print("\n\n");
+    client.print(postStr);
+    
+    Serial.println("... ok");
+   }
+else
+  {
+    Serial.println("... fail");
+  }
+
+client.stop();
 }
 
 void drawGraph() {
@@ -170,8 +217,8 @@ void debugmess()
 {
   for(byte i=0;i<14;i++)
       {
-        if (message[i]<16) Serial.print(0);
-        Serial.print(message[i],HEX);
+        if (messg[i]<16) Serial.print(0);
+        Serial.print(messg[i],HEX);
         Serial.print(" ");
       }
   Serial.println();
@@ -179,31 +226,31 @@ void debugmess()
 
 void process()
 {
-  if ((message[0]==0x32) && (message[13]==0x34))
+  if ((messg[0]==0x32) && (messg[13]==0x34))
   {
     byte checksum=0;
     for(int i=1;i<12;i++)
-      checksum^=message[i];
-    if (checksum==message[12])
+      checksum^=messg[i];
+    if (checksum==messg[12])
     {
-      switch (message[3]){
+      switch (messg[3]){
       case 0xC0:
         debugmess();
-        outTemp=(int)message[8]-offset;
-        dischargeTemp=(int)message[10]-offset;//bit 48..55
+        outTemp=(int)messg[8]-offset;
+        dischargeTemp=(int)messg[10]-offset;//bit 48..55
         break;
       case 0xC3:
         debugmess();
-        fanSpeed=(int)message[7]*10;//bit 24..31
+        fanSpeed=(int)messg[7]*10;//bit 24..31
         break;
       case 0x20:
         debugmess();
-        inSetTemp=(int)(message[4])-offset;//bit 1..7 (bit0 isFahrenHeit)
-        roomTemp=(int)message[5]-offset; //bit 8..15
+        inSetTemp=(int)(messg[4])-offset;//bit 1..7 (bit0 isFahrenHeit)
+        roomTemp=(int)messg[5]-offset; //bit 8..15
         break;
       case 0xF3:
         debugmess();
-        current=(int)message[8];//bit 32..39
+        current=(int)messg[8];//bit 32..39
         break;
       }
     }      else Serial.println("checksum fail");
@@ -238,7 +285,7 @@ void serialEvent() {
     // get the new byte:
     char inChar = (char)swSer.read();
     // add it to the inputString:
-    message[buffpoint]=inChar;
+    messg[buffpoint]=inChar;
     buffpoint++;
 
     if((buffpoint>14)||(inChar==0x34))
