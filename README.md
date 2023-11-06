@@ -7,4 +7,4 @@ Configure Wifi access point
 
 burn
 
-More info on yo5ptd.wordpress.org
+More info on yo5ptd.wordpress.com
