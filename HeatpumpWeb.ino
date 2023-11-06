@@ -16,7 +16,7 @@
 #define STAPSK  "wifi pass"
 #endifwifi ssid
 
-String apiKey = "thingspead api key";
+String apiKey = "thingspeak api key";
 const char* tpserver = "api.thingspeak.com";
 
 byte messg[56];         // a String to hold incoming data
